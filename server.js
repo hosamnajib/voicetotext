@@ -7,6 +7,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { FORMS, fieldsOf } from './forms.js';
 import { buildPlacementPdf, reference as placementRef } from './documents/placement.js';
+import { INDEX_HTML } from './publicHtml.js';
 
 // Document generators per form (add e.g. receipt: buildReceiptPdf here later)
 const DOCUMENTS = { placement: { build: buildPlacementPdf, ref: placementRef } };
@@ -194,6 +195,9 @@ async function sendPdf(res, formId, values, id, download) {
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 async function serveStatic(res, pathname) {
   const norm = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.replace(/^\//, ''));
+  if (norm === 'index.html') {
+    return send(res, 200, INDEX_HTML, 'text/html; charset=utf-8');
+  }
   const candidate1 = path.join(PUBLIC, norm);
   const candidate2 = path.join(ROOT, norm);
 
