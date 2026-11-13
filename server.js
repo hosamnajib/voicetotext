@@ -214,11 +214,12 @@ async function serveStatic(res, pathname) {
 
 export async function handleRequest(req, res) {
   const url = new URL(req.url, 'http://localhost');
+  const pathname = req.headers['x-matched-path'] || url.pathname;
   try {
-    const route = `${req.method} ${url.pathname}`;
+    const route = `${req.method} ${pathname}`;
     if (route === 'GET /api/config') return send(res, 200, { hasKey: !!process.env.GROQ_API_KEY && !process.env.GROQ_API_KEY.startsWith('your_'), stt: STT_MODEL, llm: LLM_MODEL });
-    if (req.method === 'GET' && url.pathname.startsWith('/api/forms/')) {
-      const form = FORMS[url.pathname.split('/').pop()];
+    if (req.method === 'GET' && pathname.startsWith('/api/forms/')) {
+      const form = FORMS[pathname.split('/').pop()];
       return form ? send(res, 200, form) : send(res, 404, { error: 'Unknown form.' });
     }
     if (route === 'POST /api/transcribe') return send(res, 200, await transcribe(req, url));
@@ -230,13 +231,13 @@ export async function handleRequest(req, res) {
       if (!FORMS[formId]) throw new HttpError(404, 'Unknown form.');
       return await sendPdf(res, formId, values, null, false);
     }
-    const pdfMatch = req.method === 'GET' && url.pathname.match(/^\/api\/submissions\/([\w-]+)\/pdf$/);
+    const pdfMatch = req.method === 'GET' && pathname.match(/^\/api\/submissions\/([\w-]+)\/pdf$/);
     if (pdfMatch) {
       const s = (await readSubs()).find((x) => x.id === pdfMatch[1]);
       if (!s) throw new HttpError(404, 'Submission not found.');
       return await sendPdf(res, s.form, s.values, s.id, url.searchParams.has('download'));
     }
-    if (req.method === 'GET') return await serveStatic(res, url.pathname);
+    if (req.method === 'GET') return await serveStatic(res, pathname);
     throw new HttpError(404, 'Not found');
   } catch (err) {
     if (!(err instanceof HttpError)) console.error(err);
