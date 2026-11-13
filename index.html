@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voice Form</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #16181d; --muted: #646b78; --border: #dfe2e8; --field: #fbfcfd;
+    --accent: #2f6fed; --accent-soft: #e8efff; --accent-text: #fff; --rec: #e5484d; --ok: #1f9d55; --warn: #b7791f; --warn-soft: #fff6e5;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #171a21; --text: #e8eaef; --muted: #9aa1ad; --border: #2a2f3a; --field: #12151b;
+      --accent: #5b8cff; --accent-soft: #1b2540; --accent-text: #0b0d12; --rec: #ff6369; --ok: #3dd68c; --warn: #f0b429; --warn-soft: #2a2312;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -.01em; }
+  h2 { font-size: 17px; margin: 0; }
+  h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 10px; font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .banner { background: var(--warn-soft); color: var(--warn); border: 1px solid currentColor; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; display: none; }
+  .banner code { font-size: 13px; }
+  label { display: block; font-size: 13px; color: var(--muted); font-weight: 500; }
+  input, select, textarea { width: 100%; margin-top: 5px; padding: 9px 11px; border-radius: 9px; font: inherit; border: 1px solid var(--border); background: var(--field); color: var(--text); }
+  textarea { min-height: 80px; resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ai { background: var(--accent-soft); border-color: var(--accent); }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 9px 14px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .primary { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+  .voice-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .rec-btn { display: flex; align-items: center; gap: 10px; padding: 14px 22px; font-size: 16px; font-weight: 600; border-radius: 999px; }
+  .rec-btn svg { width: 20px; height: 20px; }
+  .recording { background: var(--rec) !important; color: #fff !important; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.45);} 50% { box-shadow: 0 0 0 8px rgba(229,72,77,0);} }
+  .lang { width: auto; margin: 0; }
+  .meter { flex: 1 1 120px; height: 6px; border-radius: 4px; background: var(--border); overflow: hidden; visibility: hidden; }
+  .meter > div { height: 100%; width: 0; background: var(--rec); transition: width .05s; }
+  .status { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; margin-top: 12px; min-height: 20px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: 0 0 8px; }
+  .dot.ok { background: var(--ok); } .dot.rec { background: var(--rec); } .dot.load { background: var(--accent); animation: blink 1s infinite; } .dot.err { background: var(--rec); }
+  @keyframes blink { 50% { opacity: .3; } }
+  .transcript-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 14px; flex-wrap: wrap; }
+  .transcript-row label { flex: 1 1 300px; }
+  .missing { margin-top: 10px; font-size: 13px; color: var(--muted); display: none; }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); margin: 2px 4px 2px 0; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+  .wide { grid-column: 1 / -1; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  .form-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .legend { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .legend span { width: 12px; height: 12px; border-radius: 3px; background: var(--accent-soft); border: 1px solid var(--accent); }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; }
+  td button { padding: 4px 10px; font-size: 12px; }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  .empty { color: var(--muted); font-size: 14px; }
+  @media print {
+    body { background: #fff; color: #000; }
+    .no-print, .banner { display: none !important; }
+    .card { border: none; box-shadow: none; padding: 0; }
+    input, select, textarea { border: none; border-bottom: 1px solid #999; border-radius: 0; background: none !important; color: #000; padding: 4px 0; appearance: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="no-print">
+    <h1>Voice Form</h1>
+    <p class="sub">Describe the deal out loud. Groq Whisper turns your voice into text, then an AI model fills in the form. Check it, fix anything, and save.</p>
+  </div>
+  <div class="banner" id="keyBanner">No Groq API key found. Copy <code>.env.example</code> to <code>.env</code>, paste your free key from console.groq.com/keys, and restart the server.</div>
+
+  <div class="card no-print">
+    <div class="voice-row">
+      <button class="rec-btn primary" id="recBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>
+        <span>Start talking</span>
+      </button>
+      <select class="lang" id="lang" title="Spoken language">
+        <option value="">Auto language</option>
+        <option value="en">English</option>
+        <option value="ar">Arabic</option>
+        <option value="fr">French</option>
+        <option value="hi">Hindi</option>
+        <option value="ur">Urdu</option>
+      </select>
+      <div class="meter" id="meter"><div></div></div>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Ready.</span></div>
+    <div class="transcript-row">
+      <label>Transcript (you can edit it or type instead of speaking)
+        <textarea id="transcript" placeholder="e.g. Placement agreement dated today. Landlord is Ahmed Al Mansoori, phone 050 123 4567. Tenant Sara Khan, email sara at gmail dot com. Two-bedroom apartment, unit 1204, Marina Heights, Dubai Marina. Rent 120,000 dirhams a year in 4 cheques, starting first of December, one year lease, deposit 10,000. Fee is 5% of annual rent paid by the tenant. Agent Omar from Rizurf Realty."></textarea>
+      </label>
+      <button id="fillBtn">Fill form from text</button>
+    </div>
+    <div class="missing" id="missing"></div>
+  </div>
+
+  <form class="card" id="form" autocomplete="off">
+    <div class="form-head">
+      <h2 id="formTitle">Loading form…</h2>
+      <div class="legend no-print"><span></span>Filled by AI, please check</div>
+    </div>
+    <div id="formBody"></div>
+    <div class="actions no-print">
+      <button type="button" id="clearBtn">Clear</button>
+      <button type="button" id="pdfBtn">Preview PDF</button>
+      <button type="submit" class="primary">Save &amp; create PDF</button>
+    </div>
+  </form>
+
+  <div class="card no-print">
+    <h2>Saved agreements <span class="empty" id="count"></span></h2>
+    <div class="table-wrap" id="subs"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const FORM_ID = 'placement';
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let form = null, fields = [];
+
+  const setStatus = (text, kind = '') => { $('#statusText').textContent = text; $('#dot').className = 'dot ' + kind; };
+
+  async function api(path, opts = {}) {
+    const r = await fetch(path, opts);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
+    return data;
+  }
+
+  // ---------- Build the form from its definition ----------
+  function renderForm() {
+    $('#formTitle').textContent = form.title;
+    fields = form.sections.flatMap((s) => s.fields);
+    $('#formBody').innerHTML = form.sections.map((s) => `
+      <h3>${esc(s.title)}</h3>
+      <div class="grid">${s.fields.map((f) => {
+        const id = 'f_' + f.key, cls = f.wide || f.type === 'textarea' ? 'wide' : '';
+        let input;
+        if (f.type === 'select') input = `<select id="${id}" name="${f.key}"><option value=""></option>${f.options.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
+        else if (f.type === 'textarea') input = `<textarea id="${id}" name="${f.key}"></textarea>`;
+        else input = `<input id="${id}" name="${f.key}" type="${f.type === 'tel' ? 'tel' : f.type}"${f.type === 'number' ? ' step="any"' : ''} />`;
+        return `<label class="${cls}">${esc(f.label)}${input}</label>`;
+      }).join('')}</div>`).join('');
+    $('#formBody').addEventListener('input', (e) => e.target.classList.remove('ai'));
+  }
+
+  const getValues = () => Object.fromEntries(fields.map((f) => [f.key, document.getElementById('f_' + f.key).value]));
+
+  function applyValues(values) {
+    let n = 0;
+    for (const [k, v] of Object.entries(values)) {
+      const el = document.getElementById('f_' + k);
+      if (!el) continue;
+      el.value = v; el.classList.add('ai'); n++;
+    }
+    return n;
+  }
+
+  function showMissing(keys) {
+    const box = $('#missing');
+    const empty = keys.filter((k) => !document.getElementById('f_' + k)?.value);
+    if (!empty.length) { box.style.display = 'none'; return; }
+    const label = (k) => fields.find((f) => f.key === k)?.label || k;
+    box.innerHTML = 'Still missing (say them and record again): ' + empty.map((k) => `<span class="chip">${esc(label(k))}</span>`).join('');
+    box.style.display = 'block';
+  }
+
+  // ---------- Text → form ----------
+  async function fillFromText(text) {
+    if (!text.trim()) { setStatus('Say or type something first.', 'err'); return; }
+    setStatus('AI is filling the form…', 'load');
+    $('#fillBtn').disabled = true;
+    try {
+      const { values, missing } = await api('/api/extract', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ form: FORM_ID, transcript: text, current: getValues() }),
+      });
+      const n = applyValues(values);
+      showMissing(missing);
+      setStatus(n ? `Filled ${n} field${n > 1 ? 's' : ''}. Check the highlighted fields, then save.` : 'No form details found in that text.', n ? 'ok' : 'err');
+    } catch (err) { setStatus(err.message, 'err'); }
+    finally { $('#fillBtn').disabled = false; }
+  }
+  $('#fillBtn').onclick = () => fillFromText($('#transcript').value);
+
+  // ---------- Recording ----------
+  let rec = null;
+  const recBtn = $('#recBtn'), meterFill = $('#meter').firstElementChild;
+
+  async function startRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', 'audio/mp4'].find((t) => MediaRecorder.isTypeSupported(t)) || '';
+    const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+    const chunks = [];
+    recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    const ctx = new AudioContext();
+    const analyser = ctx.createAnalyser(); analyser.fftSize = 512;
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    const buf = new Uint8Array(analyser.fftSize), started = Date.now();
+    rec = { recorder, stream, chunks, ctx };
+    const tick = () => {
+      if (!rec) return;
+      analyser.getByteTimeDomainData(buf);
+      let peak = 0; for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+      meterFill.style.width = Math.min(100, (peak / 128) * 160) + '%';
+      const s = Math.floor((Date.now() - started) / 1000);
+      setStatus(`Listening… ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  Click Stop when you're done.`, 'rec');
+      rec.raf = requestAnimationFrame(tick);
+    };
+    recorder.start();
+    recBtn.classList.add('recording'); recBtn.querySelector('span').textContent = 'Stop';
+    $('#meter').style.visibility = 'visible';
+    tick();
+  }
+
+  function stopRecording() {
+    const r = rec; rec = null;
+    cancelAnimationFrame(r.raf);
+    recBtn.classList.remove('recording'); recBtn.querySelector('span').textContent = 'Start talking';
+    $('#meter').style.visibility = 'hidden';
+    return new Promise((resolve) => {
+      r.recorder.onstop = () => {
+        r.stream.getTracks().forEach((t) => t.stop()); r.ctx.close();
+        resolve(new Blob(r.chunks, { type: r.recorder.mimeType || 'audio/webm' }));
+      };
+      r.recorder.stop();
+    });
+  }
+
+  recBtn.onclick = async () => {
+    if (!rec) {
+      try { await startRecording(); } catch (err) { setStatus('Microphone unavailable: ' + err.message, 'err'); }
+      return;
+    }
+    const blob = await stopRecording();
+    recBtn.disabled = true;
+    setStatus('Turning your voice into text…', 'load');
+    try {
+      const lang = $('#lang').value;
+      const { text } = await api('/api/transcribe' + (lang ? '?lang=' + lang : ''), {
+        method: 'POST', headers: { 'Content-Type': blob.type.split(';')[0] }, body: blob,
+      });
+      if (!text) { setStatus('No speech detected. Try again closer to the mic.', 'err'); return; }
+      const box = $('#transcript');
+      box.value = box.value.trim() ? box.value.trim() + '\n' + text : text;
+      await fillFromText(text); // only the new part; existing values are sent as context
+    } catch (err) { setStatus(err.message, 'err'); }
+    finally { recBtn.disabled = false; }
+  };
+
+  // ---------- Save / list ----------
+  async function renderSubs() {
+    const list = (await api('/api/submissions').catch(() => [])).filter((s) => s.form === FORM_ID).reverse();
+    $('#count').textContent = list.length ? `(${list.length})` : '';
+    $('#subs').innerHTML = list.length ? `<table><thead><tr><th>Saved</th><th>Landlord</th><th>Tenant</th><th>Property</th><th>Rent</th><th></th></tr></thead><tbody>${
+      list.map((s) => { const v = s.values; return `<tr>
+        <td>${esc(new Date(s.createdAt).toLocaleString())}</td><td>${esc(v.landlord_name)}</td><td>${esc(v.tenant_name)}</td>
+        <td>${esc([v.unit_number, v.property_address].filter(Boolean).join(', '))}</td>
+        <td>${v.monthly_rent != null ? esc(v.monthly_rent + ' ' + (v.currency || '')) + '/mo' : ''}</td>
+        <td style="white-space:nowrap"><a href="/api/submissions/${esc(s.id)}/pdf" target="_blank"><button type="button">View PDF</button></a>
+          <a href="/api/submissions/${esc(s.id)}/pdf?download"><button type="button">Download</button></a>
+          <button type="button" data-open="${esc(s.id)}">Edit</button></td></tr>`; }).join('')}</tbody></table>`
+      : '<p class="empty">Nothing saved yet.</p>';
+    $('#subs').onclick = (e) => {
+      const id = e.target.dataset.open; if (!id) return;
+      const s = list.find((x) => x.id === id);
+      clearForm(); for (const [k, v] of Object.entries(s.values)) { const el = document.getElementById('f_' + k); if (el) el.value = v; }
+      window.scrollTo({ top: $('#form').offsetTop - 16, behavior: 'smooth' });
+    };
+  }
+
+  function clearForm() {
+    $('#form').reset(); $('#transcript').value = ''; $('#missing').style.display = 'none';
+    document.querySelectorAll('.ai').forEach((el) => el.classList.remove('ai'));
+  }
+  $('#clearBtn').onclick = () => { clearForm(); setStatus('Cleared.'); };
+  // Open the tab right away (popup blockers allow it during a click), then fill it with the PDF.
+  $('#pdfBtn').onclick = async () => {
+    const tab = window.open('', '_blank');
+    setStatus('Creating PDF…', 'load');
+    try {
+      const r = await fetch('/api/pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form: FORM_ID, values: getValues() }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not create PDF');
+      const url = URL.createObjectURL(await r.blob());
+      if (tab) tab.location = url; else window.open(url, '_blank');
+      setStatus('PDF preview opened in a new tab. Blank fields show as lines to fill by hand.', 'ok');
+    } catch (err) { tab?.close(); setStatus(err.message, 'err'); }
+  };
+
+  $('#form').onsubmit = async (e) => {
+    e.preventDefault();
+    const values = getValues();
+    if (!Object.values(values).some((v) => String(v).trim())) { setStatus('The form is empty.', 'err'); return; }
+    const tab = window.open('', '_blank');
+    try {
+      const saved = await api('/api/submissions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form: FORM_ID, values }) });
+      if (tab) tab.location = `/api/submissions/${saved.id}/pdf`;
+      clearForm(); await renderSubs(); setStatus('Agreement saved. The PDF opened in a new tab; it is also in the list below.', 'ok');
+    } catch (err) { tab?.close(); setStatus(err.message, 'err'); }
+  };
+
+  // ---------- Boot ----------
+  (async () => {
+    try {
+      const [cfg, f] = await Promise.all([api('/api/config'), api('/api/forms/' + FORM_ID)]);
+      form = f; renderForm(); renderSubs();
+      if (!cfg.hasKey) { $('#keyBanner').style.display = 'block'; setStatus('Add your Groq API key to start.', 'err'); }
+      else setStatus(`Ready. Speech: ${cfg.stt} · AI: ${cfg.llm}`, 'ok');
+    } catch (err) { setStatus('Could not reach the server: ' + err.message, 'err'); }
+  })();
+})();
+</script>
+</body>
+</html>
