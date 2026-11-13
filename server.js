@@ -212,9 +212,24 @@ async function serveStatic(res, pathname) {
   throw new HttpError(404, 'Not found');
 }
 
+function getPathname(req) {
+  const url = new URL(req.url || '/', 'http://localhost');
+  if (url.pathname && url.pathname !== '/server.js') {
+    return url.pathname;
+  }
+  if (req.headers['x-forwarded-uri']) {
+    return new URL(req.headers['x-forwarded-uri'], 'http://localhost').pathname;
+  }
+  if (req.headers['x-now-route-matches']) {
+    const match = new URLSearchParams(req.headers['x-now-route-matches']).get('1');
+    if (match) return match.startsWith('/') ? match : '/' + match;
+  }
+  return url.pathname;
+}
+
 export async function handleRequest(req, res) {
   const url = new URL(req.url, 'http://localhost');
-  const pathname = req.headers['x-matched-path'] || url.pathname;
+  const pathname = getPathname(req);
   try {
     const route = `${req.method} ${pathname}`;
     if (route === 'GET /api/config') return send(res, 200, { hasKey: !!process.env.GROQ_API_KEY && !process.env.GROQ_API_KEY.startsWith('your_'), stt: STT_MODEL, llm: LLM_MODEL });
