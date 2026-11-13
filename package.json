@@ -1,0 +1,16 @@
+{
+  "name": "voice-form-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Speak into a real estate form: Groq Whisper speech-to-text + Groq LLM field extraction.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  }
+}
