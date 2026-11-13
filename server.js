@@ -214,17 +214,14 @@ async function serveStatic(res, pathname) {
 
 function getPathname(req) {
   const url = new URL(req.url || '/', 'http://localhost');
+  const pathParam = url.searchParams.get('path');
+  if (pathParam != null) {
+    return pathParam.startsWith('/') ? pathParam : '/' + pathParam;
+  }
   if (url.pathname && url.pathname !== '/server.js') {
     return url.pathname;
   }
-  if (req.headers['x-forwarded-uri']) {
-    return new URL(req.headers['x-forwarded-uri'], 'http://localhost').pathname;
-  }
-  if (req.headers['x-now-route-matches']) {
-    const match = new URLSearchParams(req.headers['x-now-route-matches']).get('1');
-    if (match) return match.startsWith('/') ? match : '/' + match;
-  }
-  return url.pathname;
+  return '/';
 }
 
 export async function handleRequest(req, res) {
