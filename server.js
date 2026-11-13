@@ -193,10 +193,19 @@ async function sendPdf(res, formId, values, id, download) {
 // ---------- Static files ----------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 async function serveStatic(res, pathname) {
-  const file = path.normalize(path.join(PUBLIC, pathname === '/' ? 'index.html' : decodeURIComponent(pathname)));
-  if (!file.startsWith(PUBLIC)) throw new HttpError(403, 'Forbidden');
-  try { send(res, 200, await fs.readFile(file), TYPES[path.extname(file)] || 'application/octet-stream'); }
-  catch { throw new HttpError(404, 'Not found'); }
+  const norm = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.replace(/^\//, ''));
+  const candidate1 = path.join(PUBLIC, norm);
+  const candidate2 = path.join(ROOT, norm);
+
+  for (const file of [candidate1, candidate2]) {
+    try {
+      const data = await fs.readFile(file);
+      return send(res, 200, data, TYPES[path.extname(file)] || 'application/octet-stream');
+    } catch {
+      // try next
+    }
+  }
+  throw new HttpError(404, 'Not found');
 }
 
 export async function handleRequest(req, res) {
@@ -230,6 +239,14 @@ export async function handleRequest(req, res) {
     send(res, err.status || 500, { error: err.message || 'Server error' });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default handleRequest;
 
 const isDirectRun = !process.env.VERCEL && process.argv[1] && (
   process.argv[1].endsWith('server.js') ||
