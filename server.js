@@ -256,7 +256,10 @@ export async function handleRequest(req, res) {
     throw new HttpError(404, 'Not found');
   } catch (err) {
     if (!(err instanceof HttpError)) console.error(err);
-    send(res, err.status || 500, { error: err.message || 'Server error' });
+    send(res, err.status || 500, {
+      error: err.message || 'Server error',
+      debug: { url: req.url, pathname, headers: req.headers }
+    });
   }
 }
 
